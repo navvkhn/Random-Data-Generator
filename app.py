@@ -61,12 +61,12 @@ def sidebar_config():
     st.sidebar.header('3. Column Configuration')
     col_configs = []
     
-    # Expanded list of structural and semantic data types
+# Expanded list of structural and semantic data types
     available_types = [
         "Integers", "Floats", "Dates", "Text (Theme-Based)", 
-        "Full Name", "Email Address", "Company Name", "Phone Number", "City & State"
-    ]
-    
+        "Full Name", "Email Address", "Company Name", "Phone Number", "City & State",
+        "Start Date", "End Date", "Modified Date" # <--- Added temporal types
+    ]    
     with st.sidebar.expander("Rename & Classify Columns", expanded=True):
         for i in range(num_cols):
             col1, col2 = st.columns([3, 2])
@@ -102,9 +102,28 @@ def generate_dataset(rows, col_configs, ranges):
     # Unpack basic configurations
     int_min, int_max = ranges["int_range"]
     float_min, float_max = ranges["float_range"]
-    start_date, end_date = ranges["date_range"]
+    global_start_date, global_end_date = ranges["date_range"]
     words = ranges["words"]
     
+    # --- PRE-CALCULATE DEPENDENT TIMELINES ---
+    # This ensures that no matter what order the user arranges the columns, 
+    # Start Date <= Modified Date <= End Date for every single row.
+    global_days_diff = max(1, (global_end_date - global_start_date).days)
+    
+    # Start: Random date within the first 80% of the global range (leaves room for end dates)
+    timeline_starts = [global_start_date + timedelta(days=int(d)) 
+                       for d in np.random.randint(0, int(global_days_diff * 0.8), size=rows)]
+    
+    # End: Start Date + random days (between 1 and 365 days later)
+    timeline_ends = [s + timedelta(days=int(d)) 
+                     for s, d in zip(timeline_starts, np.random.randint(1, 365, size=rows))]
+    
+    # Modified: Random date exactly between that row's Start and End
+    import random # Ensure standard random is imported at the top of your file
+    timeline_modifieds = [s + timedelta(days=random.randint(0, (e - s).days)) 
+                          for s, e in zip(timeline_starts, timeline_ends)]
+    # -----------------------------------------
+
     for c_name, c_type in col_configs:
         # Handle duplicate column names gracefully
         final_col_name = c_name
@@ -118,15 +137,24 @@ def generate_dataset(rows, col_configs, ranges):
         elif c_type == "Floats":
             data_dict[final_col_name] = np.random.uniform(float_min, float_max, size=rows).round(4)
             
-        elif c_type == "Dates":
-            days_diff = (end_date - start_date).days
-            random_days = np.random.randint(0, max(1, days_diff), size=rows)
-            data_dict[final_col_name] = [start_date + timedelta(days=int(d)) for d in random_days]
+        elif c_type == "Dates": # Generic independent date
+            random_days = np.random.randint(0, global_days_diff, size=rows)
+            data_dict[final_col_name] = [global_start_date + timedelta(days=int(d)) for d in random_days]
             
         elif c_type == "Text (Theme-Based)":
             data_dict[final_col_name] = np.random.choice(words, size=rows)
             
-        # 2. Complex Real-World Semantic Types
+        # 2. Complex Temporal Types (Dependent Logic)
+        elif c_type == "Start Date":
+            data_dict[final_col_name] = timeline_starts
+            
+        elif c_type == "End Date":
+            data_dict[final_col_name] = timeline_ends
+            
+        elif c_type == "Modified Date":
+            data_dict[final_col_name] = timeline_modifieds
+
+        # 3. Complex Real-World Semantic Types
         elif c_type == "Full Name":
             fn = np.random.choice(FIRST_NAMES, size=rows)
             ln = np.random.choice(LAST_NAMES, size=rows)
