@@ -1,222 +1,402 @@
 import streamlit as st
-import pandas as pd
-import numpy as np
-from datetime import datetime, timedelta
-import io
-import random
+import streamlit.components.v1 as components
 
-# Page configuration
-st.set_page_config(page_title="Advanced Data Generator", layout="wide")
-st.title('Advanced Random Data Generator & Synthesizer')
+# 1. Configure the Streamlit page to be wide so the UI has room to breathe
+st.set_page_config(
+    page_title="Synthetic Data Studio",
+    layout="wide",
+    initial_sidebar_state="collapsed" # Hide the sidebar to make it look like a pure website
+)
 
-# Predefined themes for Text generation
-THEMES = {
-    "Generic": ['Alpha', 'Beta', 'Gamma', 'Delta', 'Valid', 'Null_Check', 'Test_Row'],
-    "Racing": ['F1', 'Nascar', 'Pitstop', 'Lap_Time', 'Driver', 'Circuit', 'Chassis', 'Grid'],
-    "Bike Sales": ['Mountain', 'Road', 'Hybrid', 'BMX', 'Electric', 'Gear', 'Spoke', 'Frame'],
-    "Hospital": ['Patient', 'Doctor', 'Ward', 'Emergency', 'ICU', 'Discharged', 'Admitted', 'Triage']
-}
+# 2. Hide Streamlit's default header and footer for a cleaner look
+hide_st_style = """
+            <style>
+            #MainMenu {visibility: hidden;}
+            footer {visibility: hidden;}
+            header {visibility: hidden;}
+            /* Remove padding from the main block */
+            .block-container {
+                padding-top: 0rem;
+                padding-bottom: 0rem;
+            }
+            </style>
+            """
+st.markdown(hide_st_style, unsafe_allow_html=True)
 
-# Real-world lookup repositories for semantic data generation
-FIRST_NAMES = ['John', 'Jane', 'Alex', 'Emily', 'Michael', 'Sarah', 'David', 'Jessica', 'James', 'Maria', 'Robert', 'Lisa', 'William', 'Karen', 'Joseph', 'Donna']
-LAST_NAMES = ['Smith', 'Johnson', 'Williams', 'Brown', 'Jones', 'Garcia', 'Miller', 'Davis', 'Rodriguez', 'Martinez', 'Hernandez', 'Lopez', 'Gonzalez', 'Wilson', 'Anderson', 'Thomas']
-DOMAINS = ['gmail.com', 'yahoo.com', 'outlook.com', 'hotmail.com', 'protonmail.com', 'icloud.com']
-COMPANIES = ['ApexCorp', 'VertexIndustries', 'NovaLogistics', 'QuantumTech', 'BlueSkyHolding', 'SummitMedia', 'IronCladSecurity', 'CoreSolutions']
-CITIES = ['New York', 'Los Angeles', 'Chicago', 'Houston', 'Phoenix', 'Philadelphia', 'San Antonio', 'San Diego', 'Dallas', 'San Jose']
-STATES = ['NY', 'CA', 'IL', 'TX', 'AZ', 'PA', 'TX', 'CA', 'TX', 'CA']
+# 3. Paste our complete HTML/CSS/JS frontend into a Python string
+html_code = """
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <style>
+        :root {
+            --primary: #6366f1;
+            --primary-hover: #4f46e5;
+            --bg-gradient-1: #0f172a;
+            --bg-gradient-2: #312e81;
+            --glass-bg: rgba(255, 255, 255, 0.05);
+            --glass-border: rgba(255, 255, 255, 0.1);
+            --text-main: #f8fafc;
+            --text-muted: #94a3b8;
+        }
 
-def sidebar_config():
-    st.sidebar.header('1. Core Settings')
-    
-    # Theme selection
-    selected_theme = st.sidebar.selectbox("Select Keyword Theme (for Generic Text columns)", list(THEMES.keys()))
-    
-    # Shape inputs
-    num_rows = st.sidebar.number_input("Number of Rows", min_value=1, max_value=100000, value=1000)
-    num_cols = st.sidebar.number_input("Number of Columns", min_value=1, max_value=50, value=5)
+        body {
+            margin: 0;
+            padding: 2rem;
+            font-family: 'Inter', system-ui, -apple-system, sans-serif;
+            background: linear-gradient(135deg, var(--bg-gradient-1), var(--bg-gradient-2));
+            color: var(--text-main);
+            min-height: 100vh;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+        }
 
-    st.sidebar.header('2. Global Data Ranges')
-    with st.sidebar.expander("Integer & Float Ranges"):
-        int_min = st.number_input("Integer Minimum", value=-1000)
-        int_max = st.number_input("Integer Maximum", value=1000)
-        float_min = st.number_input("Float Minimum", value=0.0)
-        float_max = st.number_input("Float Maximum", value=1000.0)
+        .glass-panel {
+            background: var(--glass-bg);
+            backdrop-filter: blur(12px);
+            -webkit-backdrop-filter: blur(12px);
+            border: 1px solid var(--glass-border);
+            border-radius: 16px;
+            padding: 2rem;
+            width: 100%;
+            max-width: 1200px;
+            box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.5);
+            margin-bottom: 2rem;
+        }
 
-    with st.sidebar.expander("Date Ranges & Custom Text"):
-        start_date = st.date_input("Start Date", datetime.now() - timedelta(days=365))
-        end_date = st.date_input("End Date", datetime.now())
-        custom_words = st.text_input("Custom Text Words (Comma separated)", placeholder="Apple, Banana, Cherry")
+        h1 {
+            margin-top: 0;
+            font-size: 2rem;
+            font-weight: 600;
+            background: linear-gradient(to right, #818cf8, #c084fc);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+        }
 
-    # Safety checks for ranges
-    if int_min >= int_max: int_max = int_min + 1
-    if float_min >= float_max: float_max = float_min + 1.0
-    if start_date >= end_date: end_date = start_date + timedelta(days=1)
+        h2 {
+            font-size: 1.25rem;
+            margin-bottom: 1rem;
+            color: #e2e8f0;
+            font-weight: 500;
+        }
 
-    # Determine final word list for generic text columns
-    if custom_words.strip():
-        word_list = [w.strip() for w in custom_words.split(',')]
-    else:
-        word_list = THEMES[selected_theme]
+        .controls-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 1.5rem;
+            margin-bottom: 2rem;
+        }
 
-    st.sidebar.header('3. Column Configuration')
-    col_configs = []
-    
-# Expanded list of structural and semantic data types
-    available_types = [
-        "Integers", "Floats", "Dates", "Text (Theme-Based)", 
-        "Full Name", "Email Address", "Company Name", "Phone Number", "City & State",
-        "Start Date", "End Date", "Modified Date" # <--- Added temporal types
-    ]    
-    with st.sidebar.expander("Rename & Classify Columns", expanded=True):
-        for i in range(num_cols):
-            col1, col2 = st.columns([3, 2])
-            
-            # Smart default naming logic based on selection index
-            default_name = f"Field_{i+1}"
-            if i == 0: default_name = "Customer_ID" if "Hospital" not in selected_theme else "Patient_ID"
-            elif i == 1: default_name = "Full_Name"
-            elif i == 2: default_name = "Email"
-            
-            c_name = col1.text_input("Name", value=default_name, key=f"name_{i}", label_visibility="collapsed")
-            
-            # Distribute default types cleanly across the list
-            default_type_idx = min(i, len(available_types)-1) if i < 4 else random.randint(0, len(available_types)-1)
-            c_type = col2.selectbox("Type", available_types, index=default_type_idx, key=f"type_{i}", label_visibility="collapsed")
-            
-            col_configs.append((c_name, c_type))
+        .input-group {
+            display: flex;
+            flex-direction: column;
+            gap: 0.5rem;
+        }
 
-    # Package settings to pass to generator
-    ranges = {
-        "int_range": (int_min, int_max),
-        "float_range": (float_min, float_max),
-        "date_range": (start_date, end_date),
-        "words": tuple(word_list)
-    }
-    
-    return num_rows, tuple(col_configs), ranges
+        label {
+            font-size: 0.875rem;
+            color: var(--text-muted);
+        }
 
-@st.cache_data
-def generate_dataset(rows, col_configs, ranges):
-    data_dict = {}
-    
-    # Unpack basic configurations
-    int_min, int_max = ranges["int_range"]
-    float_min, float_max = ranges["float_range"]
-    global_start_date, global_end_date = ranges["date_range"]
-    words = ranges["words"]
-    
-    # --- PRE-CALCULATE DEPENDENT TIMELINES ---
-    # This ensures that no matter what order the user arranges the columns, 
-    # Start Date <= Modified Date <= End Date for every single row.
-    global_days_diff = max(1, (global_end_date - global_start_date).days)
-    
-    # Start: Random date within the first 80% of the global range (leaves room for end dates)
-    timeline_starts = [global_start_date + timedelta(days=int(d)) 
-                       for d in np.random.randint(0, int(global_days_diff * 0.8), size=rows)]
-    
-    # End: Start Date + random days (between 1 and 365 days later)
-    timeline_ends = [s + timedelta(days=int(d)) 
-                     for s, d in zip(timeline_starts, np.random.randint(1, 365, size=rows))]
-    
-    # Modified: Random date exactly between that row's Start and End
-    import random # Ensure standard random is imported at the top of your file
-    timeline_modifieds = [s + timedelta(days=random.randint(0, (e - s).days)) 
-                          for s, e in zip(timeline_starts, timeline_ends)]
-    # -----------------------------------------
+        input, select {
+            background: rgba(0, 0, 0, 0.2);
+            border: 1px solid var(--glass-border);
+            border-radius: 8px;
+            padding: 0.75rem 1rem;
+            color: white;
+            font-size: 1rem;
+            outline: none;
+            transition: border-color 0.2s;
+        }
 
-    for c_name, c_type in col_configs:
-        # Handle duplicate column names gracefully
-        final_col_name = c_name
-        if final_col_name in data_dict:
-            final_col_name = f"{c_name}_{np.random.randint(100, 999)}"
-            
-        # 1. Base Structural Types
-        if c_type == "Integers":
-            data_dict[final_col_name] = np.random.randint(int_min, int_max + 1, size=rows)
-            
-        elif c_type == "Floats":
-            data_dict[final_col_name] = np.random.uniform(float_min, float_max, size=rows).round(4)
-            
-        elif c_type == "Dates": # Generic independent date
-            random_days = np.random.randint(0, global_days_diff, size=rows)
-            data_dict[final_col_name] = [global_start_date + timedelta(days=int(d)) for d in random_days]
-            
-        elif c_type == "Text (Theme-Based)":
-            data_dict[final_col_name] = np.random.choice(words, size=rows)
-            
-        # 2. Complex Temporal Types (Dependent Logic)
-        elif c_type == "Start Date":
-            data_dict[final_col_name] = timeline_starts
-            
-        elif c_type == "End Date":
-            data_dict[final_col_name] = timeline_ends
-            
-        elif c_type == "Modified Date":
-            data_dict[final_col_name] = timeline_modifieds
+        input:focus, select:focus {
+            border-color: var(--primary);
+        }
 
-        # 3. Complex Real-World Semantic Types
-        elif c_type == "Full Name":
-            fn = np.random.choice(FIRST_NAMES, size=rows)
-            ln = np.random.choice(LAST_NAMES, size=rows)
-            data_dict[final_col_name] = [f"{f} {l}" for f, l in zip(fn, ln)]
-            
-        elif c_type == "Email Address":
-            fn = np.random.choice(FIRST_NAMES, size=rows)
-            ln = np.random.choice(LAST_NAMES, size=rows)
-            dom = np.random.choice(DOMAINS, size=rows)
-            data_dict[final_col_name] = [f"{f.lower()}.{l.lower()}@{d}" for f, l, d in zip(fn, ln, dom)]
-            
-        elif c_type == "Company Name":
-            data_dict[final_col_name] = np.random.choice(COMPANIES, size=rows)
-            
-        elif c_type == "Phone Number":
-            area_codes = np.random.randint(200, 999, size=rows)
-            prefixes = np.random.randint(100, 999, size=rows)
-            line_numbers = np.random.randint(1000, 9999, size=rows)
-            data_dict[final_col_name] = [f"+1 ({a}) {p}-{l}" for a, p, l in zip(area_codes, prefixes, line_numbers)]
-            
-        elif c_type == "City & State":
-            indices = np.random.randint(0, len(CITIES), size=rows)
-            data_dict[final_col_name] = [f"{CITIES[idx]}, {STATES[idx]}" for idx in indices]
-            
-    return pd.DataFrame(data_dict)
+        option {
+            background: var(--bg-gradient-1);
+            color: white;
+        }
 
-def main():
-    rows, col_configs, ranges = sidebar_config()
+        #columns-container {
+            display: flex;
+            flex-direction: column;
+            gap: 1rem;
+            margin-bottom: 1.5rem;
+        }
 
-    if st.sidebar.button("Generate New Dataset", type="primary"):
-        st.cache_data.clear()
+        .column-row {
+            display: flex;
+            gap: 1rem;
+            align-items: center;
+            background: rgba(0, 0, 0, 0.1);
+            padding: 1rem;
+            border-radius: 8px;
+            border: 1px solid rgba(255,255,255,0.05);
+        }
+
+        .column-row input, .column-row select {
+            flex: 1;
+        }
+
+        button {
+            cursor: pointer;
+            border: none;
+            border-radius: 8px;
+            padding: 0.75rem 1.5rem;
+            font-size: 1rem;
+            font-weight: 500;
+            transition: all 0.2s;
+        }
+
+        .btn-primary {
+            background: var(--primary);
+            color: white;
+            box-shadow: 0 4px 6px -1px rgba(99, 102, 241, 0.4);
+        }
+
+        .btn-primary:hover {
+            background: var(--primary-hover);
+            transform: translateY(-1px);
+        }
+
+        .btn-secondary {
+            background: rgba(255, 255, 255, 0.1);
+            color: white;
+            border: 1px solid var(--glass-border);
+        }
+
+        .btn-secondary:hover {
+            background: rgba(255, 255, 255, 0.15);
+        }
+
+        .btn-danger {
+            background: rgba(239, 68, 68, 0.2);
+            color: #fca5a5;
+        }
+
+        .actions {
+            display: flex;
+            gap: 1rem;
+            margin-top: 1rem;
+        }
+
+        .table-container {
+            overflow-x: auto;
+            max-height: 500px;
+            border-radius: 8px;
+            border: 1px solid var(--glass-border);
+        }
+
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            text-align: left;
+            background: rgba(0,0,0,0.2);
+        }
+
+        th, td {
+            padding: 1rem;
+            border-bottom: 1px solid rgba(255,255,255,0.05);
+            white-space: nowrap;
+        }
+
+        th {
+            background: rgba(0,0,0,0.4);
+            position: sticky;
+            top: 0;
+            font-weight: 600;
+            color: #cbd5e1;
+            z-index: 10;
+        }
+
+        tr:hover {
+            background: rgba(255,255,255,0.02);
+        }
+    </style>
+</head>
+<body>
+
+    <div class="glass-panel">
+        <h1>Advanced Data Synthesizer</h1>
         
-    df = generate_dataset(rows, col_configs, ranges)
-    
-    # Render Preview Window
-    st.subheader(f'Dataset Preview ({rows} rows, {len(col_configs)} columns)')
-    st.dataframe(df.head(100))
-    
-    # Export options block
-    st.subheader('Export Options')
-    col1, col2 = st.columns(2)
-    
-    # CSV Data Pipeline
-    csv = df.to_csv(index=False).encode('utf-8')
-    col1.download_button(
-        label="Download as CSV",
-        data=csv,
-        file_name="synthetic_analytics_dataset.csv",
-        mime="text/csv"
-    )
-    
-    # Excel Object Generation
-    buffer = io.BytesIO()
-    with pd.ExcelWriter(buffer, engine='xlsxwriter') as writer:
-        df.to_excel(writer, index=False, sheet_name='Synthetic_Data')
-        
-    col2.download_button(
-        label="Download as Excel",
-        data=buffer,
-        file_name="synthetic_analytics_dataset.xlsx",
-        mime="application/vnd.ms-excel"
-    )
+        <div class="controls-grid">
+            <div class="input-group">
+                <label>Number of Rows</label>
+                <input type="number" id="row-count" value="15" min="1" max="100000">
+            </div>
+        </div>
 
-if __name__ == "__main__":
-    main()
+        <h2>Column Configuration</h2>
+        <div id="columns-container"></div>
+
+        <div class="actions">
+            <button class="btn-secondary" onclick="addColumn()">+ Add Column</button>
+            <button class="btn-primary" onclick="generateData()">Generate Dataset</button>
+        </div>
+    </div>
+
+    <div class="glass-panel" id="results-panel" style="display: none;">
+        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1rem;">
+            <h2>Dataset Preview</h2>
+            <button class="btn-primary" onclick="downloadCSV()">Download CSV</button>
+        </div>
+        
+        <div class="table-container">
+            <table id="data-table">
+                <thead>
+                    <tr id="table-header"></tr>
+                </thead>
+                <tbody id="table-body"></tbody>
+            </table>
+        </div>
+    </div>
+
+    <script>
+        const FIRST_NAMES = ['John', 'Jane', 'Alex', 'Emily', 'Michael', 'Sarah', 'David', 'Jessica', 'James', 'Maria', 'Robert', 'Lisa'];
+        const LAST_NAMES = ['Smith', 'Johnson', 'Williams', 'Brown', 'Jones', 'Garcia', 'Miller', 'Davis', 'Rodriguez', 'Martinez'];
+        const DOMAINS = ['gmail.com', 'yahoo.com', 'outlook.com', 'hotmail.com', 'protonmail.com'];
+        const COMPANIES = ['ApexCorp', 'VertexIndustries', 'NovaLogistics', 'QuantumTech', 'BlueSkyHolding', 'SummitMedia'];
+        const CITIES = ['New York', 'Los Angeles', 'Chicago', 'Houston', 'Phoenix', 'Philadelphia', 'San Antonio', 'San Diego'];
+        const STATES = ['NY', 'CA', 'IL', 'TX', 'AZ', 'PA', 'TX', 'CA'];
+        
+        const DATA_TYPES = ["Integers", "Floats", "Dates", "Full Name", "Email Address", "Company Name", "Phone Number", "City & State"];
+
+        let currentColumns = [
+            { id: 1, name: 'ID', type: 'Integers' },
+            { id: 2, name: 'Full_Name', type: 'Full Name' },
+            { id: 3, name: 'Contact_Email', type: 'Email Address' },
+            { id: 4, name: 'Signup_Date', type: 'Dates' }
+        ];
+        let colCounter = 5;
+        let generatedDataset = [];
+
+        const randItem = (arr) => arr[Math.floor(Math.random() * arr.length)];
+        const randInt = (min, max) => Math.floor(Math.random() * (max - min + 1)) + min;
+
+        function renderColumns() {
+            const container = document.getElementById('columns-container');
+            container.innerHTML = '';
+            
+            currentColumns.forEach(col => {
+                const row = document.createElement('div');
+                row.className = 'column-row';
+                
+                const typeOptions = DATA_TYPES.map(t => 
+                    `<option value="${t}" ${col.type === t ? 'selected' : ''}>${t}</option>`
+                ).join('');
+
+                row.innerHTML = `
+                    <input type="text" value="${col.name}" onchange="updateCol(${col.id}, 'name', this.value)" placeholder="Column Name">
+                    <select onchange="updateCol(${col.id}, 'type', this.value)">
+                        ${typeOptions}
+                    </select>
+                    <button class="btn-danger" onclick="removeColumn(${col.id})">✕</button>
+                `;
+                container.appendChild(row);
+            });
+        }
+
+        function addColumn() {
+            currentColumns.push({ id: colCounter++, name: `Field_${currentColumns.length + 1}`, type: 'Integers' });
+            renderColumns();
+        }
+
+        function removeColumn(id) {
+            currentColumns = currentColumns.filter(c => c.id !== id);
+            renderColumns();
+        }
+
+        function updateCol(id, key, value) {
+            const col = currentColumns.find(c => c.id === id);
+            if(col) col[key] = value;
+        }
+
+        function synthesizeValue(type) {
+            switch(type) {
+                case "Integers": return randInt(-1000, 10000);
+                case "Floats": return (Math.random() * 1000).toFixed(4);
+                case "Dates": 
+                    const past = Date.now() - randInt(0, 31536000000); 
+                    return new Date(past).toISOString().split('T')[0];
+                case "Full Name": return `${randItem(FIRST_NAMES)} ${randItem(LAST_NAMES)}`;
+                case "Email Address": return `${randItem(FIRST_NAMES).toLowerCase()}.${randItem(LAST_NAMES).toLowerCase()}@${randItem(DOMAINS)}`;
+                case "Company Name": return randItem(COMPANIES);
+                case "Phone Number": return `+1 (${randInt(200,999)}) ${randInt(100,999)}-${randInt(1000,9999)}`;
+                case "City & State": 
+                    const idx = randInt(0, CITIES.length - 1);
+                    return `${CITIES[idx]}, ${STATES[idx]}`;
+                default: return "Unknown";
+            }
+        }
+
+        function generateData() {
+            const rowCount = parseInt(document.getElementById('row-count').value) || 15;
+            generatedDataset = [];
+
+            for(let i = 0; i < rowCount; i++) {
+                const rowObj = {};
+                currentColumns.forEach(col => {
+                    let safeName = col.name;
+                    while(rowObj[safeName] !== undefined) safeName += "_1";
+                    rowObj[safeName] = synthesizeValue(col.type);
+                });
+                generatedDataset.push(rowObj);
+            }
+
+            renderTable();
+        }
+
+        function renderTable() {
+            if(generatedDataset.length === 0) return;
+            
+            document.getElementById('results-panel').style.display = 'block';
+            
+            const headers = Object.keys(generatedDataset[0]);
+            document.getElementById('table-header').innerHTML = headers.map(h => `<th>${h}</th>`).join('');
+            
+            const rowsHTML = generatedDataset.slice(0, 100).map(row => {
+                return `<tr>${headers.map(h => `<td>${row[h]}</td>`).join('')}</tr>`;
+            }).join('');
+            
+            document.getElementById('table-body').innerHTML = rowsHTML;
+        }
+
+        function downloadCSV() {
+            if(generatedDataset.length === 0) return;
+            
+            const headers = Object.keys(generatedDataset[0]);
+            const csvRows = [];
+            csvRows.push(headers.join(','));
+            
+            generatedDataset.forEach(row => {
+                const values = headers.map(header => {
+                    const val = String(row[header]);
+                    return val.includes(',') ? `"${val}"` : val;
+                });
+                csvRows.push(values.join(','));
+            });
+            
+            const csvString = csvRows.join('\\n');
+            const blob = new Blob([csvString], { type: 'text/csv;charset=utf-8;' });
+            const link = document.createElement('a');
+            
+            link.href = URL.createObjectURL(blob);
+            link.setAttribute('download', 'synthetic_data.csv');
+            document.body.appendChild(link);
+            link.click();
+            document.body.removeChild(link);
+        }
+
+        renderColumns();
+    </script>
+</body>
+</html>
+"""
+
+# 4. Render the HTML component in Streamlit
+# Set a large height so the user doesn't have to scroll within an iframe
+components.html(html_code, height=900, scrolling=True)
