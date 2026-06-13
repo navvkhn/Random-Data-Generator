@@ -18,12 +18,11 @@ def sidebar_config():
     # Data type selection
     data_types = st.sidebar.multiselect(
         "Select Data Types to Include",
-        choices=["Integers", "Floats", "Dates", "Text"],
+        options=["Integers", "Floats", "Dates", "Text"],  # Changed 'choices' to 'options'
         default=["Integers", "Floats", "Text"]
     )
     
     return num_rows, num_cols, data_types
-
 # Cache the data generation so it doesn't regenerate on download button clicks
 @st.cache_data
 def generate_dataset(rows, cols, types):
